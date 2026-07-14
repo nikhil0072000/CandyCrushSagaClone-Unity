@@ -27,10 +27,24 @@ public class Match
     }
     private void CollectMatchPoint()
     {
-        int addScore = _matchableList.Count * 30; //30 point per matchable
-        GameManager.Instance.IncreaseScore(addScore);
-        ScorePointFX scorePointFX = ScorePointFXPool.Instance.GetObject();
-        scorePointFX.PlayFX(_originMatchable.transform.position, addScore, _originMatchable.Variant.color);
+        int perMatchableScore = 80;
+        if (_originMatchable != null && _originMatchable.Variant != null)
+        {
+            if (_originMatchable.Variant.type == MatchableType.ColorExplode)
+                perMatchableScore = 150;
+            else if (_originMatchable.Variant.type == MatchableType.AreaExplode)
+                perMatchableScore = 100;
+        }
+
+        int addScore = _matchableList.Count * perMatchableScore;
+        if (GameManager.Instance != null)
+            GameManager.Instance.IncreaseScore(addScore);
+
+        if (ScorePointFXPool.Instance != null)
+        {
+            ScorePointFX scorePointFX = ScorePointFXPool.Instance.GetObject();
+            scorePointFX.PlayFX(_originMatchable != null ? _originMatchable.transform.position : Vector3.zero, addScore, _originMatchable != null && _originMatchable.Variant != null ? _originMatchable.Variant.color : MatchableColor.Red);
+        }
     }
     private bool TryTransform()
     {
@@ -115,15 +129,19 @@ public class Match
     }
     public void Resolve()
     {
+        if (_matchableList == null || _matchableList.Count == 0)
+            return;
+
+        _matchableList.RemoveAll(matchable => matchable == null || matchable.gameObject == null);
         CollectMatchPoint();
         for (int i = 0; i < _matchableList.Count; i++)
         {
             Matchable matchable = _matchableList[i];
-        //    //if (matchable == null) continue;
+            if (matchable == null || matchable.Variant == null)
+                continue;
+
             if (matchable.Variant.type == MatchableType.AreaExplode)
             {
-        //    //    isTriggeredSpecialType = true;
-        //    //    _matchableList.Remove(matchable);
                 _grid.TriggerAreaExplode(matchable, this);
             }
             else if (matchable.Variant.type == MatchableType.HorizontalExplode)
@@ -145,12 +163,22 @@ public class Match
         for (int i = 0; i < _matchableList.Count; i++)
         {
             Matchable matchable = _matchableList[i];
-            if (matchable.IsMoving) continue;
+            if (matchable == null || matchable.IsMoving)
+                continue;
+
             matchable.CollectScorePoint();
-            if (isTransformed && matchable == _originMatchable) continue;
-            _grid.RemoveItemAt(matchable.GridPosition);
+            if (isTransformed && matchable == _originMatchable)
+                continue;
+
+            if (_grid != null && matchable.GridPosition != null)
+            {
+                _grid.RemoveItemAt(matchable.GridPosition);
+            }
             _pool.ReturnObject(matchable);
-            _grid.columnCoroutines[matchable.GridPosition.x] = _grid.StartCoroutine(_grid.CollapseRepopulateAndScanColumn(matchable.GridPosition.x));
+            if (_grid != null && _grid.columnCoroutines != null && matchable.GridPosition != null)
+            {
+                _grid.columnCoroutines[matchable.GridPosition.x] = _grid.StartCoroutine(_grid.CollapseRepopulateAndScanColumn(matchable.GridPosition.x));
+            }
         }
     }
     public override string ToString()

@@ -34,17 +34,12 @@ namespace Core
             else
                 randomColor = GetRandomMatchableColor();
 
-            MatchableVariant randomVariant = null;
-            foreach (MatchableVariant variant in _matchableVariants)
-            {
-                if(variant.color == randomColor && variant.type == randomType)
-                {
-                    randomVariant = variant;
-                }
-            }
-
+            MatchableVariant randomVariant = GetVariant(randomColor, randomType);
             if (randomVariant == null)
-                Debug.Log("Variant not found");
+            {
+                Debug.LogWarning($"Variant not found for color={randomColor}, type={randomType}. Falling back to any available variant.");
+                randomVariant = GetAnyVariant();
+            }
             
             matchableToRandom.SetVariant(randomVariant);
         }
@@ -71,17 +66,12 @@ namespace Core
                 }
             }
 
-            MatchableVariant randomVariant = null;
-            foreach (MatchableVariant variant in _matchableVariants)
-            {
-                if (variant.color == randomColor && variant.type == randomType)
-                {
-                    randomVariant = variant;
-                }
-            }
-
+            MatchableVariant randomVariant = GetVariant(randomColor, randomType);
             if (randomVariant == null)
-                Debug.Log("Variant not found");
+            {
+                Debug.LogWarning($"Variant not found for color={randomColor}, type={randomType}. Falling back to any available variant.");
+                randomVariant = GetAnyVariant();
+            }
 
             matchableToRandom.SetVariant(randomVariant);
         }
@@ -118,16 +108,59 @@ namespace Core
         }
         public MatchableVariant GetVariant(MatchableColor color, MatchableType type)
         {
-            MatchableVariant variant = null;
+            if (_matchableVariants == null || _matchableVariants.Length == 0)
+                return null;
+
             foreach (MatchableVariant tempVariant in _matchableVariants)
             {
+                if (tempVariant == null || tempVariant.sprite == null)
+                    continue;
+
                 if (tempVariant.color == color && tempVariant.type == type)
                 {
-                    variant = tempVariant;
-                    break;
+                    return tempVariant;
                 }
             }
-            return variant;
+
+            if (color != MatchableColor.None)
+            {
+                foreach (MatchableVariant tempVariant in _matchableVariants)
+                {
+                    if (tempVariant == null || tempVariant.sprite == null)
+                        continue;
+
+                    if (tempVariant.color == color)
+                    {
+                        return tempVariant;
+                    }
+                }
+            }
+
+            foreach (MatchableVariant tempVariant in _matchableVariants)
+            {
+                if (tempVariant == null || tempVariant.sprite == null)
+                    continue;
+
+                if (tempVariant.type == type)
+                {
+                    return tempVariant;
+                }
+            }
+
+            foreach (MatchableVariant tempVariant in _matchableVariants)
+            {
+                if (tempVariant != null && tempVariant.sprite != null)
+                {
+                    return tempVariant;
+                }
+            }
+
+            return null;
+        }
+
+        public MatchableVariant GetAnyVariant()
+        {
+            return GetVariant(MatchableColor.Red, MatchableType.Normal);
         }
         public bool RollDice(float possibility)
         {

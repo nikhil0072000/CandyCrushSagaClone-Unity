@@ -4,22 +4,65 @@ using UnityEngine.InputSystem;
 
 public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
 {
-    [SerializeField] Camera _mainCam;
+    [SerializeField] private Camera _mainCam;
     private InputActions _controls;
     private Vector2 _touchPos;
     private Matchable[] _selectedMatchables = new Matchable[2];
     private MatchableGrid _grid;
+
     private void Awake()
+    {
+        InitializeControls();
+        _grid = (MatchableGrid)MatchableGrid.Instance;
+    }
+
+    private void OnEnable()
+    {
+        if (_controls == null)
+        {
+            InitializeControls();
+        }
+
+        _controls?.Touchscreen.Enable();
+    }
+
+    private void OnDisable()
+    {
+        _controls?.Touchscreen.Disable();
+    }
+
+    private void Update()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            HandleMousePointerDown();
+            return;
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            HandleMousePointerUp();
+        }
+    }
+
+    private void InitializeControls()
     {
         _controls = new InputActions();
         _controls.Touchscreen.SetCallbacks(this);
-        _controls.Touchscreen.Enable();
-        _grid = (MatchableGrid) MatchableGrid.Instance;
     }
-    private void OnDisable()
+
+    private void HandleMousePointerDown()
     {
-        _controls.Touchscreen.Disable();
+        _touchPos = Input.mousePosition;
+        HandleOnTouchedDown();
     }
+
+    private void HandleMousePointerUp()
+    {
+        _touchPos = Input.mousePosition;
+        HandleOnTouchedUp();
+    }
+
     public void OnTouchPosition(InputAction.CallbackContext context)
     {
         if (context.performed)
@@ -33,15 +76,20 @@ public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
         if (context.canceled)
             HandleOnTouchedUp();
     }
+
     private void HandleOnTouchedDown()
     {
-        Vector2 worldPoint = _mainCam.ScreenToWorldPoint(_touchPos);
+        var camera = _mainCam != null ? _mainCam : Camera.main;
+        if (camera == null)
+            return;
+
+        Vector2 worldPoint = camera.ScreenToWorldPoint(_touchPos);
         RaycastHit2D hit = Physics2D.Raycast(worldPoint, Vector2.zero);
         if (hit.collider != null)
         {
             if (hit.collider.TryGetComponent(out Matchable matchable))
             {
-                if(!matchable.IsMoving)
+                if (!matchable.IsMoving)
                 {
                     _selectedMatchables[0] = matchable;
                     _selectedMatchables[0].GetSelected();
@@ -49,16 +97,21 @@ public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
             }
         }
     }
+
     private void HandleOnTouchedUp()
     {
-        Vector2 worldPoint = _mainCam.ScreenToWorldPoint(_touchPos);
+        var camera = _mainCam != null ? _mainCam : Camera.main;
+        if (camera == null)
+            return;
+
+        Vector2 worldPoint = camera.ScreenToWorldPoint(_touchPos);
         RaycastHit2D hit = Physics2D.Raycast(worldPoint, Vector2.zero);
-        
+
         if (hit.collider != null)
         {
             if (hit.collider.TryGetComponent(out Matchable matchable))
             {
-                if(matchable != _selectedMatchables[0] && !matchable.IsMoving)
+                if (matchable != _selectedMatchables[0] && !matchable.IsMoving)
                     _selectedMatchables[1] = matchable;
             }
         }
@@ -67,7 +120,6 @@ public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
         {
             if (_grid.AreAdjacents(_selectedMatchables[0], _selectedMatchables[1]))
             {
-                //Debug.Log("First: " + _selectedMatchables[0].GridPosition + "Second: " + _selectedMatchables[1].GridPosition);
                 StartCoroutine(_grid.TryMatch(_selectedMatchables[0], _selectedMatchables[1]));
             }
             else
@@ -85,7 +137,7 @@ public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
                         StartCoroutine(_grid.TryMatch(_selectedMatchables[0], _grid.GetItemAt(x + 1, selectedY)));
                     }
                 }
-                else if(selectedX < x)
+                else if (selectedX < x)
                 {
                     if (selectedY == y)
                     {
@@ -105,6 +157,7 @@ public class InputReader : MonoBehaviour, InputActions.ITouchscreenActions
                 }
             }
         }
+
         _selectedMatchables[0]?.GetUnselected();
         _selectedMatchables[0] = _selectedMatchables[1] = null;
     }

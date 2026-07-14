@@ -34,8 +34,20 @@ public class Matchable : Movable
     }
     public void SetVariant(MatchableVariant variant)
     {
+        if (variant == null)
+        {
+            MatchablePool pool = (MatchablePool)MatchablePool.Instance;
+            if (pool != null)
+            {
+                variant = pool.GetAnyVariant();
+            }
+        }
+
         _variant = variant;
-        _spriteRenderer.sprite = variant.sprite;
+        if (_spriteRenderer != null)
+        {
+            _spriteRenderer.sprite = variant != null ? variant.sprite : null;
+        }
     }
     public void GetSelected()
     {
